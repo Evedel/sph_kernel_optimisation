@@ -37,10 +37,11 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
     # print(tac-tic)
     make = sp.Popen(["make", "-j"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
     make.wait()
+    # print()
     if make.poll() != 0:
-        # print("Make failed: " + str(make.poll()))
-        # print(make.stdout.read())
-        # print(make.stderr.read())
+        print("Make failed: " + str(make.poll()))
+        print(make.stdout.read())
+        print(make.stderr.read())
         return evaluateresult("FAIL",0,0)
     # toe = dt.now()
     # print(toe-tac)
@@ -98,13 +99,25 @@ def fixmathpy(s):
         s = re.sub(research[iro], reinsert[iro], s)
     return s
 
-def callmath(s):
+def callmathint(s):
     # mathcmd = "/Volumes/Mathematica/Mathematica.app/Contents/MacOS/WolframKernel -noprompt "
     mathcmd = "wolframscript -noprompt"
     mathcmd = "echo \"InFun[q_] = " + s + "; IntRes[q_] = Integrate[InFun[q], q]; \
                 IntBCRes[q_] = Simplify[IntRes[q] - IntRes[2]]; Print[IntBCRes[q]]; \
                 Print[FortranForm[IntBCRes[q]]];\" | " + mathcmd
     # print(mathcmd)
+    mathrun = sp.Popen(["bash", "-c", mathcmd], stdout=sp.PIPE)
+    mathrun.wait()
+    MForm = mathrun.stdout.readline().decode().rstrip()
+    FForm = mathrun.stdout.readline().decode().rstrip()
+    return MForm, FForm
+
+def callmathdif(s):
+    mathcmd = "wolframscript -noprompt"
+    mathcmd = "echo \"InFun[q_] = " + s + "; IntRes[q_] = Simplify[D[InFun[q], q]]; \
+                Print[IntRes[q]]; \
+                Print[FortranForm[IntRes[q]]];\" | " + mathcmd
+
     mathrun = sp.Popen(["bash", "-c", mathcmd], stdout=sp.PIPE)
     mathrun.wait()
     MForm = mathrun.stdout.readline().decode().rstrip()
@@ -128,15 +141,20 @@ def printkernel(klist,R,c,name):
     kernfile += "module n2ext\n"
     kernfile += "  use const\n"
     kernfile += "  implicit none\n\n"
-    kernfile += "  public :: n2f, n2df, n2ddf, n2C, n2R, n2Name\n\n"
+    kernfile += "  public :: n2f, n2df, n2ddf, n2Cv, n2R, n2Name, setdimbase\n\n"
     kernfile += "  private\n\n"
     normstr = str(c[0]) + ", " + str(c[1]) + ", " + str(c[2])
-    kernfile += "    real :: n2C(3,2) = reshape((/ " + normstr + ",&\n"
-    kernfile += "                                  " + normstr + " /),(/3,2/))\n"
+    kernfile += "    real :: n2C(3) = (/ " + normstr + " /)\n"
     kernfile += "    character (len=10) :: n2Name=' " + name + " '\n"
-    kernfile += "    real :: n2R = " + "{0:.1f}".format(R) + "\n"
-    kernfile += " contains\n\n"
-    kernfile += "  subroutine n2f(r, h, f)\n"
+    kernfile += "    real :: n2R = " + "{0:.1f}".format(R) + ", n2Cv\n"
+    kernfile += "    integer :: dim\n"
+    kernfile += "  contains\n\n"
+    kernfile += "  subroutine setdimbase(d)\n"
+    kernfile += "    integer, intent(in) :: d\n"
+    kernfile += "    dim = d\n"
+    kernfile += "    n2Cv = n2C(dim)\n"
+    kernfile += "  end subroutine\n\n"
+    kernfile += "  pure subroutine n2f(r, h, f)\n"
     kernfile += "    real, intent(in)  :: r, h\n"
     kernfile += "    real, intent(out) :: f\n"
     kernfile += "    real              :: q\n\n"
@@ -147,8 +165,11 @@ def printkernel(klist,R,c,name):
         for i, (e, c) in enumerate(w.args):
             if i == 0:
                 kernfile += "    if (q < 0.0) then\n"
-                kernfile += "      print *, 'f: something went wrong, q =', q\n"
-                kernfile += "      stop\n"
+                kernfile += "      if (isnan(q)) then\n"
+                kernfile += "        error stop 'q is nan'\n"
+                kernfile += "      else\n"
+                kernfile += "        error stop 'q is negative'\n"
+                kernfile += "      end if\n"
                 kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
             elif i == len(w.args)-1 and c == True:
                 kernfile += "    else\n"
@@ -156,8 +177,8 @@ def printkernel(klist,R,c,name):
                 kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
             kernfile += "      f  = "+ str(e) + "\n"
         kernfile += "    end if\n"
-        kernfile += "  end subroutine n2f\n\n"
-        kernfile += "  subroutine n2df(r, h, df)\n"
+        kernfile += "  end subroutine\n\n"
+        kernfile += "  pure subroutine n2df(r, h, df)\n"
         kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: df\n"
         kernfile += "    real              :: q\n\n"
@@ -166,8 +187,11 @@ def printkernel(klist,R,c,name):
             e = e / q
             if i == 0:
                 kernfile += "    if (q < 0.0) then\n"
-                kernfile += "      print *, 'df: something went wrong, q =', q\n"
-                kernfile += "      stop\n"
+                kernfile += "      if (isnan(q)) then\n"
+                kernfile += "        error stop 'q is nan'\n"
+                kernfile += "      else\n"
+                kernfile += "        error stop 'q is negative'\n"
+                kernfile += "      end if\n"
                 kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
             elif i == len(dw.args)-1 and c == True:
                 kernfile += "    else\n"
@@ -176,7 +200,7 @@ def printkernel(klist,R,c,name):
             kernfile += "      df  = " + str(e) + "\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine n2df\n\n"
-        kernfile += "  subroutine n2ddf(r, h, ddf)\n"
+        kernfile += "  pure subroutine n2ddf(r, h, ddf)\n"
         kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: ddf\n"
         kernfile += "    real              :: q\n\n"
@@ -184,8 +208,11 @@ def printkernel(klist,R,c,name):
         for i, (e, c) in enumerate(d2w.args):
             if i == 0:
                 kernfile += "    if (q < 0.0) then\n"
-                kernfile += "      print *, 'ddf: something went wrong, q =', q\n"
-                kernfile += "      stop\n"
+                kernfile += "      if (isnan(q)) then\n"
+                kernfile += "        error stop 'q is nan'\n"
+                kernfile += "      else\n"
+                kernfile += "        error stop 'q is negative'\n"
+                kernfile += "      end if\n"
                 kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
             elif i == len(d2w.args)-1 and c == True:
                 kernfile += "    else\n"
@@ -197,36 +224,45 @@ def printkernel(klist,R,c,name):
         kernfile += "end module n2ext\n"
     else:
         kernfile += "    if (q < 0.0) then\n"
-        kernfile += "      print *, 'f: something went wrong, q =', q\n"
-        kernfile += "      stop\n"
+        kernfile += "      if (isnan(q)) then\n"
+        kernfile += "        error stop 'q is nan'\n"
+        kernfile += "      else\n"
+        kernfile += "        error stop 'q is negative'\n"
+        kernfile += "      end if\n"
         kernfile += "    elseif (q < " + "{0:.1f}".format(R) + ") then\n"
         kernfile += "      f  = " + str(w) + "\n"
         kernfile += "    else\n"
         kernfile += "      f = .0\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine n2f\n\n"
-        kernfile += "  subroutine n2df(r, h, df)\n"
+        kernfile += "  pure subroutine n2df(r, h, df)\n"
         kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: df\n"
         kernfile += "    real              :: q\n\n"
         kernfile += "    q = r / h\n"
         kernfile += "    if (q < 0.0) then\n"
-        kernfile += "      print *, 'df: something went wrong, q =', q\n"
-        kernfile += "      stop\n"
+        kernfile += "      if (isnan(q)) then\n"
+        kernfile += "        error stop 'q is nan'\n"
+        kernfile += "      else\n"
+        kernfile += "        error stop 'q is negative'\n"
+        kernfile += "      end if\n"
         kernfile += "    elseif (q < " + "{0:.1f}".format(R) + ") then\n"
         kernfile += "      df  = " + str(dw) + "\n"
         kernfile += "    else\n"
         kernfile += "      df = .0\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine n2df\n\n"
-        kernfile += "  subroutine n2ddf(r, h, ddf)\n"
+        kernfile += "  pure subroutine n2ddf(r, h, ddf)\n"
         kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: ddf\n"
         kernfile += "    real              :: q\n\n"
         kernfile += "    q = r / h\n"
         kernfile += "    if (q < 0.0) then\n"
-        kernfile += "      print *, 'ddf: something went wrong, q =', q\n"
-        kernfile += "      stop\n"
+        kernfile += "      if (isnan(q)) then\n"
+        kernfile += "        error stop 'q is nan'\n"
+        kernfile += "      else\n"
+        kernfile += "        error stop 'q is negative'\n"
+        kernfile += "      end if\n"
         kernfile += "    elseif (q < " + "{0:.1f}".format(R) + ") then\n"
         kernfile += "      ddf  = " + str(d2w) + "\n"
         kernfile += "    else\n"
@@ -243,8 +279,8 @@ def integratekernel(w, enginetype):
     # +-------------------------+
     if enginetype == 0:
         WM = printing.mathematica.mathematica_code(w)
-        IWM, IWF = callmath(WM)
-        I2WM, I2WF = callmath(IWM)
+        IWM, IWF = callmathint(WM)
+        I2WM, I2WF = callmathint(IWM)
         try:
             iw = symparse(fixmathpy(IWF))
             i2w = symparse(fixmathpy(I2WF))
@@ -286,11 +322,39 @@ def integratekernel(w, enginetype):
 def differentiatekernel(w, enginetype):
     ok = False
     # +-----------------------------+
+    # | Mathematica Differentiation |
+    # +-----------------------------+
+    if enginetype == 0:
+        print("Not Implemented for This Engine")
+        exit(127)
+        WM = "Piecewise[{"
+        if (isinstance(w,Piecewise)):
+            for i, (e, c) in enumerate(w.args):
+                if c != True:
+                    WM += "{" + printing.mathematica.mathematica_code(e) + "," + str(c) + "},"
+                else:
+                    WM = WM[:-1]
+                    WM += "},0]"
+        else:
+            print("Not Implemented for Regular Functions")
+            exit(127)
+        DWM, DWF = callmathdif(WM)
+        D2WM, D2WF = callmathdif(DWM)
+        try:
+            dw = symparse(fixmathpy(DWF))
+            d2w = symparse(fixmathpy(D2WF))
+            ok = True
+        except:
+            dw, d2w = "",""
+            pass
+        # exit(0)
+    elif enginetype == 1:
+    # +-----------------------------+
     # |    Sympy Differentiation    |
     # +-----------------------------+
-    dw  = simplify(diff(w,q))
-    d2w = simplify(diff(dw,q))
-    ok = True
+        dw  = simplify(diff(w,q))
+        d2w = simplify(diff(dw,q))
+        ok = True
     return [w, dw, d2w], ok
 
 def stupidintegration(f,x,a,b,eps):

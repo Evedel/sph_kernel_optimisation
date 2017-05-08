@@ -19,33 +19,34 @@ Runnerpath = "/Users/sergeibiriukov/_git/moca_study/fortran/freeze/run-diff-err-
 
 minimizer_kwargs = {"method": "BFGS"}
 
-
 # -------------------------
 # Exponent with integration
-Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
-X0 = [1., 1., -1., 1., 1.]
-R = 2.
-MathEngine = 0
-TransformType = 0
+# Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
+# X0 = [1., 1., -1., 1., 1.]
+# R = 2.
+# MathEngine = 0
+# TransformType = 0
 # ------------------------------
 # Piecewise with differentiation
+# R = 2.
 # Basefunction = Piecewise(\
 #                 ((R - q)**5 + A[2]*(A[1] - q)**5 + A[3]*(A[0] - q)**5, q < A[0]),\
 #                 ((R - q)**5 + A[2]*(A[1] - q)**5, q < A[1]),\
 #                 ((R - q)**5, q < R),\
 #                 (0, True))
+# # A0 = 0.7
 # A0 = random.uniform(0., 1.)
-# X0 = [A0, 2*A0, random.uniform(0., 10.),random.uniform(0., 10.)]
-# R = 2.
+# # X0 = [A0, 2*A0, -2., -4.]
+# X0 = [A0, 2*A0, random.uniform(-10., 10.),random.uniform(-10., 10.)]
 # MathEngine = 1
 # TransformType = 1
 # -------------------------------
 # simple square as second derivative
-# Basefunction = A[0]*(q - A[1])**2
-# X0 = [1., 1.]
-# R = 2.
-# MathEngine = 1
-# TransformType = 0
+Basefunction = A[0]*(q - A[1])**2 + A[2]
+X0 = [random.uniform(0., 1.), random.uniform(0., 1.), random.uniform(0., 1.)]
+R = 2.
+MathEngine = 1
+TransformType = 0
 # --------------------------------
 # Runge function
 # Basefunction = A/(B + C*(q + D)**2) + E * (1. - q/2.) + F
@@ -54,11 +55,12 @@ TransformType = 0
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
 TransfStr = "Integration" if TransformType == 0 else "Differentiation"
 DimCase = [1, 2, 3]
-# DimCase = [1]
+# DimCase = [3]
 EstimateColumn = 3
 AimValue = 1.
-TaskType = ['chi-graddiv']
-# TaskType = ['chi-graddiv', 'chi-laplace']
+# TaskType = ['chi-graddiv']
+# TaskType = ['chi-laplace']
+TaskType = ['chi-graddiv', 'chi-laplace']
 LX = len(X0)
 
 def optfunc(X):
@@ -74,7 +76,8 @@ def optfunc(X):
             Xstr = Xstr + "{0:.8f}".format(X[xi]) + " "
     Xstr = Xstr[0:-2]
     cost = ob.BrokenPenalty
-    # if ((cB < cA) and (cB < 2.) and (cA >= 0.) and (cB >= 0.)):
+    # if not((X[0] < X[1]) and (X[1] < 2.) and (X[0] >= 0.) and (X[1] >= 0.)):
+    #     return cost
     w = Basefunction
     for xi in range(LX):
         w = w.subs(A[xi],X[xi])
@@ -100,11 +103,13 @@ def optfunc(X):
             plt.plot(lamq, lw, color='blue')
             leg.append(mln.Line2D([], [], color='blue', label='W'))
             plt.plot(lamq, ldw, color='red')
-            leg.append(mln.Line2D([], [], color='red', label='dW'))
+            leg.append(mln.Line2D([], [], color='red', label='W\''))
             plt.plot(lamq, ld2w, color='green')
-            leg.append(mln.Line2D([], [], color='green', label='ddW'))
+            leg.append(mln.Line2D([], [], color='green', label='W\'\''))
             plt.legend(handles=leg)
             plt.savefig("./plots/plt-%04d.pdf" %Counter, format='pdf', close=True, verbose=True)
+        # print(w)
+        # exit(0)
         cost = float(ob.solveproblem(klist, X, Counter, 0, Makepath, TaskType, Runnerpath, DimCase, EstimateColumn, AimValue))
     else:
         print("<*><*><*>\nIntegration failed\nFunction: %s\nEngine: %s\n<*><*><*>\n" %(w,MathEnStr))
