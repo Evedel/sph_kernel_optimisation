@@ -20,7 +20,11 @@ research = [re.compile('Erf'), re.compile('Erfc'), re.compile('ArcTan'), re.comp
 reinsert = ['erf', 'erfc', 'atan', 'log', '']
 
 def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dimcase, estimatecolumn, aimvalue):
-    # tic = dt.now()
+    w, dw, d2w = klist
+    if (isinstance(d2w.args[0], float)):
+        print(klist)
+        exit(0)
+
     if not os.path.exists(Pwdpath + "/appsrc"):
         os.mkdir(Pwdpath + "/appsrc")
     os.system("cp -r " + makepath + "/* " + Pwdpath + "/appsrc")
@@ -75,7 +79,8 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
             scrrun = sp.Popen(["bash", "run-diff-err-h.sh", str(DE), TT], stdout=sp.PIPE, stderr=sp.PIPE, cwd=workpath, env=Local_env)
             scrrun.wait()
             nameoferrfile = scrrun.communicate()[0].splitlines()[-1].decode().rstrip()
-            cost += evaluateresult(workpath + "/" + nameoferrfile, estimatecolumn, aimvalue)
+            lastcost = evaluateresult(workpath + "/" + nameoferrfile, estimatecolumn, aimvalue)
+            cost += lastcost
     return cost
 
 def evaluateresult(path, yidx, aimy):
@@ -91,7 +96,8 @@ def evaluateresult(path, yidx, aimy):
                     y.append(float(elements[yidx]))
             f.close()
             if (len(y) != 0):
-                quality = sqrt(sum((i-aimy)*(i-aimy) for i in y)/len(y))
+                # quality = sqrt(sum((yi-aimy)**2 for yi in y))/len(y)
+                quality = sum(abs(yi-aimy) for yi in y)
     return quality
 
 def fixmathpy(s):
@@ -205,20 +211,23 @@ def printkernel(klist,R,c,name):
         kernfile += "    real, intent(out) :: ddf\n"
         kernfile += "    real              :: q\n\n"
         kernfile += "    q = r / h\n"
-        for i, (e, c) in enumerate(d2w.args):
-            if i == 0:
-                kernfile += "    if (q < 0.0) then\n"
-                kernfile += "      if (isnan(q)) then\n"
-                kernfile += "        error stop 'q is nan'\n"
-                kernfile += "      else\n"
-                kernfile += "        error stop 'q is negative'\n"
-                kernfile += "      end if\n"
-                kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
-            elif i == len(d2w.args)-1 and c == True:
-                kernfile += "    else\n"
-            else:
-                kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
-            kernfile += "      ddf  = " + str(e) + "\n"
+        try:
+            for i, (e, c) in enumerate(d2w.args):
+                if i == 0:
+                    kernfile += "    if (q < 0.0) then\n"
+                    kernfile += "      if (isnan(q)) then\n"
+                    kernfile += "        error stop 'q is nan'\n"
+                    kernfile += "      else\n"
+                    kernfile += "        error stop 'q is negative'\n"
+                    kernfile += "      end if\n"
+                    kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
+                elif i == len(d2w.args)-1 and c == True:
+                    kernfile += "    else\n"
+                else:
+                    kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
+                kernfile += "      ddf  = " + str(e) + "\n"
+        except:
+            print("Exception lines 210-226:", d2w.args)
         kernfile += "    end if\n"
         kernfile += "  end subroutine n2ddf\n"
         kernfile += "end module n2ext\n"
@@ -275,7 +284,7 @@ def printkernel(klist,R,c,name):
 def integratekernel(w, enginetype):
     ok = False
     # +-------------------------+
-    # | Mathematica INtegration |
+    # | Mathematica Integration |
     # +-------------------------+
     if enginetype == 0:
         WM = printing.mathematica.mathematica_code(w)
@@ -290,33 +299,33 @@ def integratekernel(w, enginetype):
             pass
     elif enginetype == 1:
     # +-------------------------+
-    # |    Sympy INtegration    |
+    # |    Sympy Integration    |
     # +-------------------------+
         iw  = simplify(integrate(w,q))
         if (isinstance(iw, Piecewise)):
             iwtmp = list(iw.args)
-            iwq2 = iw.args[len(iw.args)-2][0].subs(q, 2.)
-            for i, (e, c) in enumerate(iw.args):
-                if c != True:
-                    iwtmp[i] = (e - iwq2, c)
+            iwtmp[len(iw.args)-2] = (iwtmp[len(iw.args)-2][0] - iw.args[len(iw.args)-2][0].subs(q, 2.), iw.args[len(iw.args)-2][1])
             iw = Piecewise(*iwtmp)
+            for i in range(0, len(iw.args)-2):
+                iwtmp = list(iw.args)
+                iwtmp[i] = (iw.args[i][0] - (iw.args[i][0].subs(q, 1.) - iw.args[i+1][0].subs(q, 1.)), iw.args[i][1])
+                iw = Piecewise(*iwtmp)
         else:
             iw = iw - iw.subs(q,2.)
 
         i2w = simplify(integrate(iw,q))
         if (isinstance(i2w, Piecewise)):
-            i2wtmp = list(i2w.args)
-            i2wq2 = i2w.args[len(i2w.args)-2][0].subs(q, 2.)
-            for i, (e, c) in enumerate(i2w.args):
-                if c != True:
-                    i2wtmp[i] = (e - i2wq2, c)
-            i2w = Piecewise(*i2wtmp)
+            iwtmp = list(i2w.args)
+            iwtmp[len(i2w.args)-2] = (iwtmp[len(i2w.args)-2][0] - i2w.args[len(i2w.args)-2][0].subs(q, 2.), i2w.args[len(i2w.args)-2][1])
+            i2w = Piecewise(*iwtmp)
+            for i in range(0, len(i2w.args)-2):
+                iwtmp = list(i2w.args)
+                iwtmp[i] = (i2w.args[i][0] - (i2w.args[i][0].subs(q, 1.) - i2w.args[i+1][0].subs(q, 1.)), i2w.args[i][1])
+                i2w = Piecewise(*iwtmp)
         else:
             i2w = i2w - i2w.subs(q,2.)
+
         ok = True
-    # print(w)
-    # print(iw)
-    # print(i2w)
     return [i2w, iw, w], ok
 
 def differentiatekernel(w, enginetype):
@@ -406,3 +415,8 @@ def calculatenorms(kernlist):
         inext += N((4*pi*q*q*w).subs(q,tg[i] - dt) * wg[i])
     c3D = 1./inext
     return [c1D, c2D, c3D]
+
+# f = Piecewise((0,q>2), (0.25*(2.0 - q)**3, q > 1), (0.25*(2.0 - q)**3 - (1.0 - q)**3, q>0), (0,True))
+# print(differentiatekernel(f ,1))
+# wlist, ok = differentiatekernel(f ,1)
+# print(calculatenorms(wlist))
