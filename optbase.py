@@ -5,7 +5,7 @@ import re
 from sympy.parsing.sympy_parser import parse_expr as symparse
 import subprocess as sp
 import numpy as np
-
+import time as t
 
 
 Pwdpath  = os.getcwd()
@@ -18,6 +18,16 @@ refmtsub = re.compile("((?!\*\*\d+)(?!\D\D\d+\.)\D\D\d+)|((!?\*\d+)\D\d+)|(/\d+)
 refmtser = re.compile("(\.\d\d\d\d\d+)")
 research = [re.compile('Erf'), re.compile('Erfc'), re.compile('ArcTan'), re.compile('Log'), re.compile('d0')]
 reinsert = ['erf', 'erfc', 'atan', 'log', '']
+
+def waitwithtimeout(process, timeout):
+    t0 = t.time()
+    tn = t0
+    dt = 0.5
+    while ((tn < t0 + timeout) and (process.poll() == None)):
+        t.sleep(dt)
+        tn += dt
+    if (process.poll() == None):
+        process.kill()
 
 def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dimcase, estimatecolumn, aimvalue):
     w, dw, d2w = klist
@@ -40,12 +50,13 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
     # tac = dt.now()
     # print(tac-tic)
     make = sp.Popen(["make", "-j"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
-    make.wait()
+    waitwithtimeout(make, 30)
+    # make.wait()
     # print()
     if make.poll() != 0:
-        print("Make failed: " + str(make.poll()))
-        print(make.stdout.read())
-        print(make.stderr.read())
+        # print("Make failed: " + str(make.poll()))
+        # print(make.stdout.read())
+        # print(make.stderr.read())
         return evaluateresult("FAIL",0,0)
     # toe = dt.now()
     # print(toe-tac)
@@ -74,13 +85,14 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
     # f.close()
     # print(dt.now()-toe)
     cost = 0.
+    processes = []
     for DE in dimcase:
         for TT in tasktype:
-            scrrun = sp.Popen(["bash", "run-diff-err-h.sh", str(DE), TT], stdout=sp.PIPE, stderr=sp.PIPE, cwd=workpath, env=Local_env)
-            scrrun.wait()
-            nameoferrfile = scrrun.communicate()[0].splitlines()[-1].decode().rstrip()
-            lastcost = evaluateresult(workpath + "/" + nameoferrfile, estimatecolumn, aimvalue)
-            cost += lastcost
+            processes.append(sp.Popen(["bash", "run-diff-err-h.sh", str(DE), TT], stdout=sp.PIPE, stderr=sp.PIPE, cwd=workpath, env=Local_env))
+    for prc in processes:
+        nameoferrfile = prc.communicate()[0].splitlines()[-1].decode().rstrip()
+        lastcost = evaluateresult(workpath + "/" + nameoferrfile, estimatecolumn, aimvalue)
+        cost += lastcost
     return cost
 
 def evaluateresult(path, yidx, aimy):

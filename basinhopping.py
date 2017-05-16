@@ -7,6 +7,7 @@ import os as os
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mln
+import datetime
 
 
 q = symbols('q')
@@ -87,13 +88,13 @@ def validx(x):
 
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
 TransfStr = "Integration" if TransformType == 0 else "Differentiation"
-# DimCase = [1, 2, 3]
-DimCase = [1]
+DimCase = [1, 2, 3]
+# DimCase = [1]
 EstimateColumn = 3
 AimValue = 1.
 # TaskType = ['chi-graddiv']
-TaskType = ['chi-laplace']
-# TaskType = ['chi-graddiv', 'chi-laplace']
+# TaskType = ['chi-laplace']
+TaskType = ['chi-graddiv', 'chi-laplace']
 LX = len(X0)
 
 def GetKernels(X):
@@ -116,7 +117,7 @@ def GetKernels(X):
 def PrintStep(x, f, accepted):
     global InMinimaSearch
     global Counter
-    
+
     X = x
     LX = len(x)
     klist, ok = GetKernels(X)
@@ -154,12 +155,16 @@ def PrintStep(x, f, accepted):
     Xstr = Xstr[0:-2]
 
     coststr = ""
+
     if f < 0:
         coststr += "{0:.8f}".format(f)
     else:
         coststr += "{0:.9f}".format(f)
+    # print(os.getcwd())
 
-    print("At minimum: %s; Cost: %s; Accepted: %s; Steps to minima: %d" %(Xstr, coststr, accepted, InMinimaSearch))
+    print("%s [ %03d ]; At minimum: %s; Cost: %s; Accepted: %5s; Steps to minima: %d" \
+        %(datetime.datetime.now(), Counter, Xstr, coststr, accepted, InMinimaSearch)\
+    )
     InMinimaSearch = 0
 
 def optfunc(X):
@@ -182,11 +187,12 @@ def func2d(x):
     df = np.zeros(2)
     df[0] = -14.5 * np.sin(14.5 * x[0] - 0.3) + 2. * x[0] + 0.2
     df[1] = 2. * x[1] + 0.2
-    return f, df
+    return f
 
 def main():
     # TEST
-    # spo.basinhopping(func2d, [1.0, 1.0], minimizer_kwargs={"method":"L-BFGS-B", "jac":True}, niter=10, callback=PrintStep)
+    # PrintStep([1.0, 1.0], func2d([1.0, 1.0]), False)
+    # spo.basinhopping(func2d, [1.0, 1.0], minimizer_kwargs={"method":"L-BFGS-B"}, callback=PrintStep)
     # exit(0)
 
     PrintStep(X0, optfunc(X0), False)
