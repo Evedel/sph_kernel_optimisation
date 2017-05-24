@@ -26,7 +26,9 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 # -------------------------
 # Exponent with integration
 Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
-X0 = [1., 1., -1., 1., 1.]
+# X0 = [1., 1., -1., 1., 1.]
+# X0 = [-1.20216020, 1.209727897, -1.63596466, 1.911459369, 0.34557226]
+X0 = [-1.28319772035, 1.20323832533, -1.36660632909, 2.82162326937, 0.688125380563]
 R = 2.
 MathEngine = 0
 TransformType = 0
@@ -157,13 +159,13 @@ def PrintStep(x, f, accepted):
     coststr = ""
 
     if f < 0:
-        coststr += "{0:.8f}".format(f)
+        coststr += "{0:.6f}".format(f)
     else:
-        coststr += "{0:.9f}".format(f)
+        coststr += "{0:.7f}".format(f)
     # print(os.getcwd())
 
     print("%s [ %03d ]; At minimum: %s; Cost: %s; Accepted: %5s; Steps to minima: %d" \
-        %(datetime.datetime.now(), Counter, Xstr, coststr, accepted, InMinimaSearch)\
+        %(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), Counter, Xstr, coststr, accepted, InMinimaSearch)\
     )
     InMinimaSearch = 0
 
