@@ -1,7 +1,7 @@
 from sympy import *
 import numpy as np
 import matplotlib.pyplot as plt
-from kernoptim import optbase as ob
+import optbase as ob
 
 q = symbols('q')
 

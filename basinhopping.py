@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mln
 import datetime
 
-
 q = symbols('q')
 A = symbols('A0:10')
 Counter = 0
@@ -25,15 +24,15 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 
 # -------------------------
 # Exponent with integration
-Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
-# X0 = [1., 1., -1., 1., 1.]
+# Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
+# # X0 = [1., 1., 0., 0., 0.]
 # X0 = [-1.20216020, 1.209727897, -1.63596466, 1.911459369, 0.34557226]
-X0 = [-1.28319772035, 1.20323832533, -1.36660632909, 2.82162326937, 0.688125380563]
-R = 2.
-MathEngine = 0
-TransformType = 0
-def validx(x):
-    return True
+# # X0 = [88.964659192, 3.04592817425, -0.914791070728, 7.01690442862, -0.99975783763]
+# R = 2.
+# MathEngine = 0
+# TransformType = 2
+# def validx(x):
+#     return True
 # ------------------------------
 # Piecewise with differentiation
 # R = 2.
@@ -55,18 +54,13 @@ def validx(x):
 #         return False
 # -------------------------------
 # simple square as second derivative
-# Basefunction = A[0]*(q - A[1])**2 + A[2]
-# X0 = [random.uniform(0., 1.), 2., random.uniform(0., 1.)]
-# R = 2.
-# MathEngine = 1
-# TransformType = 0
-# --------------------------------
-# simple square as second derivative
-# Basefunction = A[0]/q + A[1]
-# X0 = [random.uniform(0., 1.), random.uniform(0., 1.)]
-# R = 2.
-# MathEngine = 1
-# TransformType = 0
+Basefunction = A[0]*(q - A[1])**2 + A[2]
+X0 = [random.uniform(0., 1.), 2., random.uniform(0., 1.)]
+R = 2.
+MathEngine = 0
+TransformType = 2
+def validx(x):
+    return True
 # --------------------------------
 # Runge function
 # Basefunction = A/(B + C*(q + D)**2) + E * (1. - q/2.) + F
@@ -80,7 +74,7 @@ def validx(x):
 #                 (0, True))
 # X0 = [1., 1., 0.25]
 # MathEngine = 1
-# TransformType = 0
+# TransformType = 1
 # def validx(x):
 #     if ((x[0] > 0) and (x[0] < 2)):
 #         return True
@@ -89,7 +83,16 @@ def validx(x):
 # --------------------------------
 
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
-TransfStr = "Integration" if TransformType == 0 else "Differentiation"
+if TransformType == 0:
+    TransfStr = "Integration"
+elif TransformType == 1:
+    TransfStr = "Differentiation"
+elif TransformType == 2:
+    TransfStr = "Kernel ODE Solution"
+else:
+    print("Not implemented: ", TransformType)
+    exit(127)
+
 DimCase = [1, 2, 3]
 # DimCase = [1]
 EstimateColumn = 3
@@ -103,7 +106,7 @@ def GetKernels(X):
     w = Basefunction
     LX = len(X)
     if (len(X0) != LX):
-        klist = [0,0,0]
+        klist = [0, 0, 0]
         ok = False
     else:
         for xi in range(LX):
@@ -113,6 +116,8 @@ def GetKernels(X):
             klist, ok = ob.integratekernel(w, MathEngine)
         elif TransformType == 1:
             klist, ok = ob.differentiatekernel(w, MathEngine)
+        elif TransformType == 2:
+            klist, ok = ob.solvekernelode(w)
 
     return klist, ok
 
@@ -124,27 +129,50 @@ def PrintStep(x, f, accepted):
     LX = len(x)
     klist, ok = GetKernels(X)
     if ok:
-        lamw = lambdify(q, klist[0], modules=['numpy', 'sympy'])
-        lamdw = lambdify(q, klist[1], modules=['numpy', 'sympy'])
-        lamd2w = lambdify(q, klist[2], modules=['numpy', 'sympy'])
-        lamq = np.linspace(0.01,2.,100)
-        lw, ldw, ld2w = [], [], []
-        for i in range(len(lamq)):
-            lw.append(lamw(lamq[i]))
-            ldw.append(lamdw(lamq[i]))
-            ld2w.append(lamd2w(lamq[i]))
-        leg = []
-        plt.clf()
-        plt.plot(lamq, lw, color='blue')
-        leg.append(mln.Line2D([], [], color='blue', label='W'))
-        plt.plot(lamq, ldw, color='red')
-        leg.append(mln.Line2D([], [], color='red', label='W\''))
-        plt.plot(lamq, ld2w, color='green')
-        leg.append(mln.Line2D([], [], color='green', label='W\'\''))
-        plt.legend(handles=leg)
-        plt.savefig("./plots/plt-%04d.pdf" %Counter, format='pdf', close=True, verbose=True)
+        if ((TransformType == 0) or (TransformType == 1)):
+            lamw = lambdify(q, klist[0], modules=['numpy', 'sympy'])
+            lamdw = lambdify(q, klist[1], modules=['numpy', 'sympy'])
+            lamd2w = lambdify(q, klist[2], modules=['numpy', 'sympy'])
+            lamq = np.linspace(0.01,2.,100)
+            lw, ldw, ld2w = [], [], []
+            for i in range(len(lamq)):
+                lw.append(lamw(lamq[i]))
+                ldw.append(lamdw(lamq[i]))
+                ld2w.append(lamd2w(lamq[i]))
+            leg = []
+            plt.clf()
+            plt.plot(lamq, lw, color='blue')
+            leg.append(mln.Line2D([], [], color='blue', label='W'))
+            plt.plot(lamq, ldw, color='red')
+            leg.append(mln.Line2D([], [], color='red', label='W\''))
+            plt.plot(lamq, ld2w, color='green')
+            leg.append(mln.Line2D([], [], color='green', label='W\'\''))
+            plt.legend(handles=leg)
+            plt.savefig("./plots/plt-%04d.pdf" %Counter, format='pdf', close=True, verbose=True)
+        if (TransformType == 2):
+            for dim in range(len(DimCase)):
+                lamw = lambdify(q, klist[0][dim], modules=['numpy', 'sympy'])
+                lamdw = lambdify(q, klist[1][dim], modules=['numpy', 'sympy'])
+                lamd2w = lambdify(q, klist[2][dim], modules=['numpy', 'sympy'])
+                lamq = np.linspace(0.01,2.,100)
+                lw, ldw, ld2w = [], [], []
+                for i in range(len(lamq)):
+                    lw.append(lamw(lamq[i]))
+                    ldw.append(lamdw(lamq[i]))
+                    ld2w.append(lamd2w(lamq[i]))
+                leg = []
+                plt.clf()
+                plt.plot(lamq, lw, color='blue')
+                leg.append(mln.Line2D([], [], color='blue', label='W'))
+                plt.plot(lamq, ldw, color='red')
+                leg.append(mln.Line2D([], [], color='red', label='W\''))
+                plt.plot(lamq, ld2w, color='green')
+                leg.append(mln.Line2D([], [], color='green', label='W\'\''))
+                plt.legend(handles=leg)
+                plt.savefig("./plots/plt-%04d-%d.pdf" %(Counter, dim+1), format='pdf', close=True, verbose=True)
         Counter += 1
-
+    else:
+        print("Transform went wrong: ", klist, X)
     Xstr = ""
     for xi in range(LX):
         if (X[xi] != 0.):
@@ -163,7 +191,6 @@ def PrintStep(x, f, accepted):
     else:
         coststr += "{0:.7f}".format(f)
     # print(os.getcwd())
-
     print("%s [ %03d ]; At minimum: %s; Cost: %s; Accepted: %5s; Steps to minima: %d" \
         %(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), Counter, Xstr, coststr, accepted, InMinimaSearch)\
     )
@@ -180,8 +207,20 @@ def optfunc(X):
     if validx(X):
         klist, ok = GetKernels(X)
         if ok:
-            cost = float(ob.solveproblem(klist, X, Counter, 0, Makepath, TaskType, Runnerpath, DimCase, EstimateColumn, AimValue))
-
+            if (TransformType == 2):
+                tmpc = 0.
+                for dim in range(len(DimCase)):
+                    kdl = [klist[0][dim], klist[1][dim], klist[2][dim]]
+                    # print(kdl[0], '\n')
+                    # print(kdl[1], '\n')
+                    # print(kdl[2])
+                    # print('----------')
+                    tmpc += float(ob.solveproblem(kdl, X, Counter, 0, Makepath, \
+                        TaskType, Runnerpath, [dim + 1], EstimateColumn, AimValue))
+                cost = tmpc
+            else:
+                cost = float(ob.solveproblem(kdl, X, Counter, 0, Makepath, \
+                    TaskType, Runnerpath, [dim], EstimateColumn, AimValue))
     return cost
 
 def func2d(x):
@@ -196,11 +235,9 @@ def main():
     # PrintStep([1.0, 1.0], func2d([1.0, 1.0]), False)
     # spo.basinhopping(func2d, [1.0, 1.0], minimizer_kwargs={"method":"L-BFGS-B"}, callback=PrintStep)
     # exit(0)
-
-    PrintStep(X0, optfunc(X0), False)
-
     if not os.path.exists("./plots"):
         os.mkdir("./plots")
+    PrintStep(X0, optfunc(X0), False)
     ret = spo.basinhopping(optfunc, X0, minimizer_kwargs=minimizer_kwargs, callback=PrintStep)
     print("global minimum: x = %s, f(x0) = %s" % (ret.x, ret.fun))
 

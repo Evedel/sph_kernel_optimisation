@@ -1,7 +1,7 @@
 from sympy import *
 import numpy as np
 import matplotlib.pyplot as plt
-from kernoptim import optbase as ob
+import optbase as ob
 
 q = symbols('q')
 
@@ -69,9 +69,8 @@ ftmp[1] = ftmp[1].subs(c2, -(ftmp[1] - c2).subs(q,2.))
 # print(Derivative(Y(q),q,q) + Derivative(Y(q),q)/q - W.args[2][0])
 # exit(0)
 # 1 --- 0
-ftmp[2] = c1 * log(q) + c2 + 0.03 * q**5 - 0.09375 + 0.25 * q**2
+ftmp[2] = c1 * log(q) + c2 + 0.03 * q**5 - 0.09375 * q**4 + 0.25 * q**2
 ftmp[2] = ftmp[2].subs(c1, solve(diff(ftmp[2],q) - diff(ftmp[1],q),c1)[0].subs(q,1))
-# ftmp[2] = ftmp[2].subs(c1, solve(diff(ftmp[2],q,q) - diff(ftmp[1],q,q),c1)[0].subs(q,1))
 ftmp[2] = ftmp[2].subs(c2, -(ftmp[2] - ftmp[1] - c2).subs(q,1))
 # print((diff(ftmp[2],q,q) - diff(ftmp[1],q,q)).subs(q, 1.))
 # print((diff(ftmp[2],q) - diff(ftmp[1],q)).subs(q, 1.))
@@ -94,7 +93,7 @@ c1, c2 = symbols('c1 c2')
 # 2 --- 1
 # print(Derivative(Y(q),q,q) + 2/q*Derivative(Y(q),q) - W.args[1][0])
 # exit(0)
-ftmp[1] = -c1/q + c2 - 1./12. * q**5 + 0.075 * q**4 - 0.25 * q**3 + 1./3. * q**2
+ftmp[1] = -c1/q + c2 - 1./120. * q**5 + 0.075 * q**4 - 0.25 * q**3 + 1./3. * q**2
 ftmp[1] = ftmp[1].subs(c1, solve(diff(ftmp[1],q),c1)[0].subs(q,2))
 ftmp[1] = ftmp[1].subs(c2, -(ftmp[1] - c2).subs(q,2.))
 # # 1 --- 0
@@ -112,6 +111,8 @@ print("F  : ", Y3d)
 print("F' : ", diff(Y3d,q))
 print("F'': ", diff(Y3d,q,q))
 print('-----------')
+# plotstaff(Y3d, True)
+# exit(0)
 
 ty = Y3d.args[1][0]
 tw = W.args[1][0]
@@ -123,13 +124,13 @@ tw = W.args[2][0]
 print(ty)
 print(tw)
 print(simplify(diff(ty,q,q) + 2 * diff(ty,q)/q - tw))
-exit(0)
+# exit(0)
 
-plotstaff(Y1d, True)
-plotstaff(Y2d, True)
-plotstaff(Y3d, True)
+# plotstaff(Y1d, True)
+# plotstaff(Y2d, True)
+# plotstaff(Y3d, True)
 
-# wlist1d, ok = ob.differentiatekernel(Y1d, 1)
-# wlist2d, ok = ob.differentiatekernel(Y2d, 1)
-# wlist3d, ok = ob.differentiatekernel(Y3d, 1)
-# print(ob.calculatenorms(wlist1d)[0], ob.calculatenorms(wlist2d)[1], ob.calculatenorms(wlist3d)[2])
+wlist1d, ok = ob.differentiatekernel(Y1d, 1)
+wlist2d, ok = ob.differentiatekernel(Y2d, 1)
+wlist3d, ok = ob.differentiatekernel(Y3d, 1)
+print(ob.calculatenorms(wlist1d)[0], ob.calculatenorms(wlist2d)[1], ob.calculatenorms(wlist3d)[2])
