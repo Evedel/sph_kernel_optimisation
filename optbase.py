@@ -48,7 +48,7 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
     if not os.path.exists(Pwdpath + "/appsrc"):
         os.mkdir(Pwdpath + "/appsrc")
     os.system("cp -r " + makepath + "/* " + Pwdpath + "/appsrc")
-    norm = calculatenorms(klist)
+    norm = calculatenorms(w)
     n2kernf90 = printkernel(klist, 2, norm, 'genesis')
 
     # print(n2kernf90)
@@ -174,14 +174,9 @@ def printkernel(klist,R,c,name):
     w, dw, d2w = klist
     e = symbols('e')
     nexp = N(exp(1))
-    w = N(w.subs(e,nexp))
-    dw = N(dw.subs(e,nexp))
-    d2w = N(d2w.subs(e,nexp))
-
-    # print(w)
-    # print(dw)
-    # print(i2w)
-    # exit(0)
+    w = N(w.subs(e,nexp)).evalf(3)
+    dw = N(dw.subs(e,nexp)).evalf(3)
+    d2w = N(d2w.subs(e,nexp)).evalf(3)
 
     kernfile = ""
     kernfile += "module n2ext\n"
@@ -511,8 +506,8 @@ def quadintegration(f,x,a,b,n):
     #     print(n, inext)
     return inext
 
-def calculatenorms(kernlist):
-    w, dw, d2w = kernlist
+def calculatenorms(originkern):
+    w = originkern
     n = 20
     tg, wg = gauss_legendre(n, 8)
     dt = -1

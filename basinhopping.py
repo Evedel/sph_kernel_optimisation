@@ -1,4 +1,6 @@
 import optbase as ob
+import humpskernels as hk
+
 from sympy import *
 import scipy.optimize as spo
 from datetime import datetime as dt
@@ -8,6 +10,7 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mln
 import datetime
+
 
 q = symbols('q')
 A = symbols('A0:10')
@@ -54,13 +57,13 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 #         return False
 # -------------------------------
 # simple square as second derivative
-Basefunction = A[0]*(q - A[1])**2 + A[2]
-X0 = [random.uniform(0., 1.), 2., random.uniform(0., 1.)]
-R = 2.
-MathEngine = 0
-TransformType = 2
-def validx(x):
-    return True
+# Basefunction = A[0]*(q - A[1])**2 + A[2]
+# X0 = [random.uniform(0., 1.), 2., random.uniform(0., 1.)]
+# R = 2.
+# MathEngine = 0
+# TransformType = 2
+# def validx(x):
+#     return True
 # --------------------------------
 # Runge function
 # Basefunction = A/(B + C*(q + D)**2) + E * (1. - q/2.) + F
@@ -68,27 +71,41 @@ def validx(x):
 # --------------------------------
 # Cubic spline as function
 # R = 2.
-# Basefunction = Piecewise(\
+# Basefunction = q**2*Piecewise(\
 #                 (A[2] * (R - q)**3 - A[1] * (A[0] - q)**3, q < A[0]),\
 #                 (A[2] * (R - q)**3, q < R),\
 #                 (0, True))
 # X0 = [1., 1., 0.25]
 # MathEngine = 1
-# TransformType = 1
+# TransformType = 0
 # def validx(x):
 #     if ((x[0] > 0) and (x[0] < 2)):
 #         return True
 #     else:
 #         return False
 # --------------------------------
+# Humps kernels, search only for multiplier power
+R = 2.
+Basefunction = q
+X0 = [0., 1.]
+MathEngine = 1
+TransformType = 3
+def validx(x):
+    if ((x[0] >= 0) and (x[1] > 0)):
+        return True
+    else:
+        return False
 
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
+
 if TransformType == 0:
     TransfStr = "Integration"
 elif TransformType == 1:
     TransfStr = "Differentiation"
 elif TransformType == 2:
     TransfStr = "Kernel ODE Solution"
+elif TransformType == 3:
+    TransfStr = "Humps Kernels"
 else:
     print("Not implemented: ", TransformType)
     exit(127)
@@ -118,7 +135,8 @@ def GetKernels(X):
             klist, ok = ob.differentiatekernel(w, MathEngine)
         elif TransformType == 2:
             klist, ok = ob.solvekernelode(w)
-
+        elif TransformType == 3:
+            klist, ok = hk.humpskerlnels(X[0], X[1])
     return klist, ok
 
 def PrintStep(x, f, accepted):
@@ -129,7 +147,9 @@ def PrintStep(x, f, accepted):
     LX = len(x)
     klist, ok = GetKernels(X)
     if ok:
-        if ((TransformType == 0) or (TransformType == 1)):
+        if ((TransformType == 0) or
+            (TransformType == 1) or
+            (TransformType == 3)):
             lamw = lambdify(q, klist[0], modules=['numpy', 'sympy'])
             lamdw = lambdify(q, klist[1], modules=['numpy', 'sympy'])
             lamd2w = lambdify(q, klist[2], modules=['numpy', 'sympy'])
@@ -148,6 +168,8 @@ def PrintStep(x, f, accepted):
             plt.plot(lamq, ld2w, color='green')
             leg.append(mln.Line2D([], [], color='green', label='W\'\''))
             plt.legend(handles=leg)
+            if TransformType == 3:
+                plt.annotate(r'$q^{%s}M4$' %("{0:.3f}".format(X[0]/X[1])), xy=(1.0, -0.1))
             plt.savefig("./plots/plt-%04d.pdf" %Counter, format='pdf', close=True, verbose=True)
         if (TransformType == 2):
             for dim in range(len(DimCase)):
@@ -192,7 +214,8 @@ def PrintStep(x, f, accepted):
         coststr += "{0:.7f}".format(f)
     # print(os.getcwd())
     print("%s [ %03d ]; At minimum: %s; Cost: %s; Accepted: %5s; Steps to minima: %d" \
-        %(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), Counter, Xstr, coststr, accepted, InMinimaSearch)\
+        %(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), Counter, Xstr, coststr, \
+        accepted, InMinimaSearch)\
     )
     InMinimaSearch = 0
 
@@ -219,8 +242,8 @@ def optfunc(X):
                         TaskType, Runnerpath, [dim + 1], EstimateColumn, AimValue))
                 cost = tmpc
             else:
-                cost = float(ob.solveproblem(kdl, X, Counter, 0, Makepath, \
-                    TaskType, Runnerpath, [dim], EstimateColumn, AimValue))
+                cost = float(ob.solveproblem(klist, X, Counter, 0, Makepath, \
+                    TaskType, Runnerpath, DimCase, EstimateColumn, AimValue))
     return cost
 
 def func2d(x):
