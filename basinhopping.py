@@ -27,15 +27,15 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 
 # -------------------------
 # Exponent with integration
-# Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
-# # X0 = [1., 1., 0., 0., 0.]
+Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
+# X0 = [1., 1., 0., 0., 0.]
 # X0 = [-1.20216020, 1.209727897, -1.63596466, 1.911459369, 0.34557226]
-# # X0 = [88.964659192, 3.04592817425, -0.914791070728, 7.01690442862, -0.99975783763]
-# R = 2.
-# MathEngine = 0
-# TransformType = 2
-# def validx(x):
-#     return True
+X0 = [88.964659192, 3.04592817425, -0.914791070728, 7.01690442862, -0.99975783763]
+R = 2.
+MathEngine = 0
+TransformType = 0
+def validx(x):
+    return True
 # ------------------------------
 # Piecewise with differentiation
 # R = 2.
@@ -85,16 +85,17 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 #         return False
 # --------------------------------
 # Humps kernels, search only for multiplier power
-R = 2.
-Basefunction = q
-X0 = [0., 1.]
-MathEngine = 1
-TransformType = 3
-def validx(x):
-    if ((x[0] >= 0) and (x[1] > 0)):
-        return True
-    else:
-        return False
+# R = 2.
+# Basefunction = q
+# X0 = [0., 1.]
+# MathEngine = 1
+# TransformType = 3
+# def validx(x):
+#     if ((x[0] >= 0) and (x[1] > 0)):
+#         return True
+#     else:
+#         return False
+# ------------------------------------------------------------------------------
 
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
 
@@ -156,6 +157,8 @@ def PrintStep(x, f, accepted):
             lamq = np.linspace(0.01,2.,100)
             lw, ldw, ld2w = [], [], []
             for i in range(len(lamq)):
+                # print(klist[0])
+                # exit(0)
                 lw.append(lamw(lamq[i]))
                 ldw.append(lamdw(lamq[i]))
                 ld2w.append(lamd2w(lamq[i]))

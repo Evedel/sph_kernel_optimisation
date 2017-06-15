@@ -81,4 +81,5 @@ def humpskerlnels(inm1, inn1):
 # plot(klist[0], (q,0,2))
 # plot(klist[1], (q,0,2))
 # plot(klist[2], (q,0,2))
-# print(ob.printkernel(humpskerlnel(2,2), 2., ob.calculatenorms(humpskerlnel(2,2)[0]), 'q*M4'))
+# klist, ok = humpskerlnels(3.0, 1.0)
+# print(ob.printkernel(klist, 2., ob.calculatenorms(klist[0]), 'q^{2.0}*M4'))

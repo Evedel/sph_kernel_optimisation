@@ -21,13 +21,17 @@ research = [re.compile('Erf'),
             re.compile('ArcTan'),
             re.compile('Log'),
             re.compile('Gamma'),
-            re.compile('d0')]
+            re.compile('d0'),
+            re.compile('Cos'),
+            re.compile('Sin')]
 reinsert = ['erf',
             'erfc',
             'atan',
             'log',
             'gamma',
-            '']
+            '',
+            'cos',
+            'sin']
 
 def waitwithtimeout(process, timeout):
     t0 = t.time()
@@ -252,7 +256,7 @@ def printkernel(klist,R,c,name):
                 elif i == len(d2w.args)-1 and c == True:
                     kernfile += "    else\n"
                 else:
-                    kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
+                    kernfile += "    else if (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
                 kernfile += "      ddf  = " + linetruncaion(str(e)) + "\n"
         except:
             print("Exception lines 210-226:", d2w.args)
@@ -266,7 +270,7 @@ def printkernel(klist,R,c,name):
         kernfile += "      else\n"
         kernfile += "        error stop 'q is negative'\n"
         kernfile += "      end if\n"
-        kernfile += "    elseif (q < " + "{0:.1f}".format(R) + ") then\n"
+        kernfile += "    else if (q < " + "{0:.1f}".format(R) + ") then\n"
         kernfile += "      f  = " + linetruncaion(str(w)) + "\n"
         kernfile += "    else\n"
         kernfile += "      f = .0\n"
@@ -281,7 +285,7 @@ def printkernel(klist,R,c,name):
         kernfile += "      else\n"
         kernfile += "        error stop 'q is negative'\n"
         kernfile += "      end if\n"
-        kernfile += "    elseif (q < " + "{0:.1f}".format(R) + ") then\n"
+        kernfile += "    else if (q < " + "{0:.1f}".format(R) + ") then\n"
         kernfile += "      df  = " + linetruncaion(str(dw)) + "\n"
         kernfile += "    else\n"
         kernfile += "      df = .0\n"
@@ -302,8 +306,20 @@ def printkernel(klist,R,c,name):
         kernfile += "      ddf = .0\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine\n"
-        kernfile += "end module n2ext\n"
+        kernfile += "end module\n"
     return kernfile
+
+def tabulatekernel(wlist, path):
+        qt = np.linspace(0., 2., 100)
+        kernprofilefilename = "kernprofile.dat"
+        f = open(path + "/"  + kernprofilefilename, 'w')
+        f.write("x3y {| x | w | dw | ddw |}\n")
+        for i in range(len(qt)):
+            f.write("%s %s %s %s\n" \
+                %(qt[i], \
+                N(wlist[0].subs(q,qt[i])), \
+                N(wlist[1].subs(q,qt[i])), \
+                N(wlist[2].subs(q,qt[i]))))
 
 def callmathint(s):
     mathcmd = "wolframscript -noprompt"
@@ -364,7 +380,7 @@ def integratekernel(w, enginetype):
         ok = True
     return [i2w, iw, w], ok
 
-def differentiatekernel(w, enginetype):
+def differentiatekernel(w, enginetype=1):
     ok = False
     # +-----------------------------+
     # | Mathematica Differentiation |
@@ -401,6 +417,16 @@ def differentiatekernel(w, enginetype):
         d2w = simplify(diff(dw,q))
         ok = True
     return [w, dw, d2w], ok
+
+def calcdphidh(w):
+    dphi = 4*pi/q**2*integrate(w*q**2,q)
+    phi = integrate(dphi - dphi.subs(q,0.),q)
+    dphidh = -phi - q * diff(phi,q)
+    print(w)
+    print(dphi)
+    print(phi)
+    print(dphidh)
+    exit(0)
 
 def callmathodesol(s, dim):
     # "y[q]/.DSolve[{y''[q] + y'[q] == Exp[-q], y[2] == 0, y'[2] == 0},y[q],q][[1]]"
