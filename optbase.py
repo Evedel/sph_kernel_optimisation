@@ -309,10 +309,9 @@ def printkernel(klist,R,c,name):
         kernfile += "end module\n"
     return kernfile
 
-def tabulatekernel(wlist, path):
-        qt = np.linspace(0., 2., 100)
-        kernprofilefilename = "kernprofile.dat"
-        f = open(path + "/"  + kernprofilefilename, 'w')
+def tabulatekernel(wlist, R, path, kfname="kernprofile.dat"):
+        qt = np.linspace(0., R, 100)
+        f = open(path + "/"  + kfname, 'w')
         f.write("x3y {| x | w | dw | ddw |}\n")
         for i in range(len(qt)):
             f.write("%s %s %s %s\n" \
@@ -320,6 +319,7 @@ def tabulatekernel(wlist, path):
                 N(wlist[0].subs(q,qt[i])), \
                 N(wlist[1].subs(q,qt[i])), \
                 N(wlist[2].subs(q,qt[i]))))
+        f.close()
 
 def callmathint(s):
     mathcmd = "wolframscript -noprompt"
