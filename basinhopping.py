@@ -5,12 +5,12 @@ from sympy import *
 import scipy.optimize as spo
 from datetime import datetime as dt
 import numpy as np
-import os as os
+import os
 import random
 import matplotlib.pyplot as plt
 import matplotlib.lines as mln
 import datetime
-
+import sys
 
 q = symbols('q')
 A = symbols('A0:10')
@@ -18,8 +18,8 @@ Counter = 0
 HiddenCounter = 0
 InMinimaSearch = 0
 
-Makepath = "/Users/sergeibiriukov/_git/moca_study/fortran/freeze"
-Runnerpath = "/Users/sergeibiriukov/_git/moca_study/fortran/freeze/run-diff-err-h.sh"
+Makepath = "/Users/ameliaf/Sergei/_git/moca_study/fortran/freeze"
+Runnerpath = "/Users/ameliaf/Sergei/_git/moca_study/fortran/freeze/run-diff-err-h.sh"
 
 # minimizer_kwargs = {"method": "BFGS"}
 minimizer_kwargs = {"method": "L-BFGS-B"}
@@ -231,6 +231,7 @@ def PrintStep(x, f, accepted):
     )
     InMinimaSearch = 0
     Counter += 1
+    sys.stdout.flush()
 
 def optfunc(X):
     global Counter
