@@ -43,39 +43,34 @@ def waitwithtimeout(process, timeout):
     if (process.poll() == None):
         process.kill()
 
-def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dimcase, estimatecolumn, aimvalue):
+def solveproblem(klist, gen, popnum, gennum, makepath, taskcase, runnerpath, dimcase, estimatecolumn, aimvalue, diffcase='n2w'):
     w, dw, d2w = klist
     if (isinstance(d2w.args[0], float)):
         print(klist)
         print("Something wrong in solveproblem")
-        exit(0)
+        exit(127)
     if not os.path.exists(Pwdpath + "/appsrc"):
         os.mkdir(Pwdpath + "/appsrc")
     os.system("cp -r " + makepath + "/* " + Pwdpath + "/appsrc")
     norm = calculatenorms(w)
     n2kernf90 = printkernel(klist, 2, norm, 'genesis')
 
-    # print(n2kernf90)
-    # exit(0)
     f = open(Pwdpath + "/appsrc/src/kernel/" + "n2ext.f90", 'w')
     f.write(n2kernf90)
     f.close()
 
-    # rmoldexe = sp.Popen(["rm", Pwdpath + "/appsrc/execute"], stdout=sp.PIPE, cwd=Pwdpath+"/appsrc").wait()
-    # tac = dt.now()
-    # print(tac-tic)
-    make = sp.Popen(["make", "-j", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
+    if (popnum == 0):
+        make = sp.Popen(["make", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
+    else:
+        make = sp.Popen(["make", "-j", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
     waitwithtimeout(make, 30)
-    # make.wait()
-    # print()
+
     if make.poll() != 0:
         # print("Make failed: " + str(make.poll()))
         # print(make.stdout.read())
         # print(make.stderr.read())
         # exit(0)
         return evaluateresult("FAIL",0,0)
-    # toe = dt.now()
-    # print(toe-tac)
     gnstr = "%04d" %gennum
     ppstr = "%04d" %popnum
     workpath = Pwdpath + "/results/pp-" + ppstr + "/gn-" + gnstr
@@ -114,8 +109,8 @@ def solveproblem(klist, gen, popnum, gennum, makepath, tasktype, runnerpath, dim
     cost = 0.
     processes = []
     for DE in dimcase:
-        for TT in tasktype:
-            processes.append(sp.Popen(["bash", "run-diff-err-h.sh", str(DE), TT], stdout=sp.PIPE, stderr=sp.PIPE, cwd=workpath, env=Local_env))
+        for TT in taskcase:
+            processes.append(sp.Popen(["bash", "run-diff-err-h.sh", str(DE), TT, diffcase], stdout=sp.PIPE, stderr=sp.PIPE, cwd=workpath, env=Local_env))
     for prc in processes:
         nameoferrfile = prc.communicate()[0].splitlines()[-1].decode().rstrip()
         lastcost = evaluateresult(workpath + "/" + nameoferrfile, estimatecolumn, aimvalue)
@@ -309,16 +304,18 @@ def printkernel(klist,R,c,name):
         kernfile += "end module\n"
     return kernfile
 
-def tabulatekernel(wlist, R, path, kfname="kernprofile.dat"):
+def tabulatefunctions(flist, R, path, kfname="kernprofile.dat"):
         qt = np.linspace(0., R, 100)
         f = open(path + "/"  + kfname, 'w')
-        f.write("x3y {| x | w | dw | ddw |}\n")
+        f.write("x3y {| x | w | dw | ddw | ddw + (v-1)dw | -2 dw/q | } \n")
         for i in range(len(qt)):
-            f.write("%s %s %s %s\n" \
-                %(qt[i], \
-                N(wlist[0].subs(q,qt[i])), \
-                N(wlist[1].subs(q,qt[i])), \
-                N(wlist[2].subs(q,qt[i]))))
+            strtowrite = ""
+            # strtowrite += str(qt[i]**3) + ' '
+            strtowrite += str(qt[i]) + ' '
+            for func in flist:
+                # strtowrite += str(N(qt[i]**3*func.subs(q,qt[i]))) + ' '
+                strtowrite += str(N(func.subs(q,qt[i]))) + ' '
+            f.write(strtowrite + '\n')
         f.close()
 
 def callmathint(s):

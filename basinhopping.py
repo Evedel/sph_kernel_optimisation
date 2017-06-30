@@ -27,34 +27,41 @@ minimizer_kwargs = {"method": "L-BFGS-B"}
 
 # -------------------------
 # Exponent with integration
-Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
+# Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
 # X0 = [1., 1., 0., 0., 0.]
 # X0 = [-1.20216020, 1.209727897, -1.63596466, 1.911459369, 0.34557226]
-X0 = [88.964659192, 3.04592817425, -0.914791070728, 7.01690442862, -0.99975783763]
-R = 2.
-MathEngine = 0
-TransformType = 0
-def validx(x):
-    return True
+# X0 = [88.964659192, 3.04592817425, -0.914791070728, 7.01690442862, -0.99975783763]
+# R = 2.
+# MathEngine = 0
+# TransformType = 0
+# def validx(x):
+#     return True
 # ------------------------------
 # Piecewise with differentiation
-# R = 2.
-# Basefunction = Piecewise(\
-#                 ((R - q)**5 + A[2]*(A[1] - q)**5 + A[3]*(A[0] - q)**5, q < A[0]),\
-#                 ((R - q)**5 + A[2]*(A[1] - q)**5, q < A[1]),\
-#                 ((R - q)**5, q < R),\
-#                 (0, True))
-# # A0 = 0.7
+# zipm6 = Piecewise(\
+#         ((3. - q)**5 - 6. * (2. - q)**5 + 15. * (1. - q)**5, q < 1.),\
+#         ((3. - q)**5 - 6. * (2. - q)**5, q < 2.), \
+#         ((3. - q)**5, q < 3.),\
+#         (0, True)).subs(q, 1.5*q)
+Basefunction = Piecewise(\
+                ((3. - q)**5 + A[2]*(A[1] - q)**5 + A[3]*(A[0] - q)**5, q < A[0]),\
+                ((3. - q)**5 + A[2]*(A[1] - q)**5, q < A[1]),\
+                ((3. - q)**5, q < 3.),\
+                (0, True)).subs(q, 1.5*q)
+
 # A0 = random.uniform(0., 1.)
-# # X0 = [A0, 2*A0, -2., -4.]
+X0 = [1., 2., -6., 15.]
 # X0 = [A0, 2*A0, random.uniform(-10., 10.),random.uniform(-10., 10.)]
-# MathEngine = 1
-# TransformType = 1
-# def validx(x):
-#     if ((x[0] > 0) and (x[0] < X[1]) and (x[1] < 2)):
-#         return True
-#     else:
-#         return False
+MathEngine = 1
+TTypeStr = 'Differentiation'
+# DiffCase='fab'
+DiffCase='n2w'
+def validx(x):
+    # if ((x[0] > 0.) and (x[0] < x[1]) and (x[1] < 3.)):
+    if (x[0] < x[1]):
+        return True
+    else:
+        return False
 # -------------------------------
 # simple square as second derivative
 # Basefunction = A[0]*(q - A[1])**2 + A[2]
@@ -99,16 +106,16 @@ def validx(x):
 
 MathEnStr = "Mathematica" if MathEngine == 0 else "SymPy"
 
-if TransformType == 0:
-    TransfStr = "Integration"
-elif TransformType == 1:
-    TransfStr = "Differentiation"
-elif TransformType == 2:
-    TransfStr = "Kernel ODE Solution"
-elif TransformType == 3:
-    TransfStr = "Humps Kernels"
+if TTypeStr == 'Integration':
+    TransformType = 0
+elif TTypeStr == 'Differentiation':
+    TransformType = 1
+elif TTypeStr == 'Kernel ODE Solution':
+    TransformType = 2
+elif TTypeStr == 'Humps Kernels':
+    TransformType = 3
 else:
-    print("Not implemented: ", TransformType)
+    print("Not implemented: ", TTypeStr)
     exit(127)
 
 DimCase = [1, 2, 3]
@@ -116,8 +123,8 @@ DimCase = [1, 2, 3]
 EstimateColumn = 3
 AimValue = 1.
 # TaskType = ['chi-graddiv']
-# TaskType = ['chi-laplace']
-TaskType = ['chi-graddiv', 'chi-laplace']
+TaskType = ['chi-laplace']
+# TaskType = ['chi-graddiv', 'chi-laplace']
 LX = len(X0)
 
 def GetKernels(X):
@@ -153,7 +160,10 @@ def PrintStep(x, f, accepted):
             (TransformType == 3)):
             lamw = lambdify(q, klist[0], modules=['numpy', 'sympy'])
             lamdw = lambdify(q, klist[1], modules=['numpy', 'sympy'])
-            lamd2w = lambdify(q, klist[2], modules=['numpy', 'sympy'])
+            if (DiffCase == 'fab'):
+                lamd2w = lambdify(q, -2*klist[1]/q, modules=['numpy', 'sympy'])
+            else:
+                lamd2w = lambdify(q, klist[2], modules=['numpy', 'sympy'])
             lamq = np.linspace(0.01,2.,100)
             lw, ldw, ld2w = [], [], []
             for i in range(len(lamq)):
@@ -195,7 +205,6 @@ def PrintStep(x, f, accepted):
                 leg.append(mln.Line2D([], [], color='green', label='W\'\''))
                 plt.legend(handles=leg)
                 plt.savefig("./plots/plt-%04d-%d.pdf" %(Counter, dim+1), format='pdf', close=True, verbose=True)
-        Counter += 1
     else:
         print("Transform went wrong: ", klist, X)
     Xstr = ""
@@ -221,6 +230,7 @@ def PrintStep(x, f, accepted):
         accepted, InMinimaSearch)\
     )
     InMinimaSearch = 0
+    Counter += 1
 
 def optfunc(X):
     global Counter
@@ -230,6 +240,8 @@ def optfunc(X):
     InMinimaSearch += 1
     cost = ob.BrokenPenalty
 
+    # print(X)
+    # exit(0)
     if validx(X):
         klist, ok = GetKernels(X)
         if ok:
@@ -242,11 +254,13 @@ def optfunc(X):
                     # print(kdl[2])
                     # print('----------')
                     tmpc += float(ob.solveproblem(kdl, X, Counter, 0, Makepath, \
-                        TaskType, Runnerpath, [dim + 1], EstimateColumn, AimValue))
+                        TaskType, Runnerpath, [dim + 1], EstimateColumn, AimValue,
+                        diffcase=DiffCase))
                 cost = tmpc
             else:
                 cost = float(ob.solveproblem(klist, X, Counter, 0, Makepath, \
-                    TaskType, Runnerpath, DimCase, EstimateColumn, AimValue))
+                    TaskType, Runnerpath, DimCase, EstimateColumn, AimValue,
+                    diffcase=DiffCase))
     return cost
 
 def func2d(x):
