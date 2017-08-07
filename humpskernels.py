@@ -48,18 +48,18 @@ def humpskerlnels(inm1, inn1):
            4*n1)*(m1 + 5*n1)))
 
     Y = Piecewise(\
-                    (f1, q <= 1.),\
-                    (f2, q <= 2.),\
+                    (0.25*6*f1, q <= 1.),\
+                    (0.25*6*f2, q <= 2.),\
                     (0, True))
 
     iY = Piecewise(\
-                    (if1, q <= 1.),\
-                    (if2, q <= 2.),\
+                    (0.25*6*if1, q <= 1.),\
+                    (0.25*6*if2, q <= 2.),\
                     (0, True))
 
     iiY = Piecewise(\
-                    (iif1, q <= 1.),\
-                    (iif2, q <= 2.),\
+                    (0.25*6*iif1, q <= 1.),\
+                    (0.25*6*iif2, q <= 2.),\
                     (0, True))
 
     # plot(Y,iY,iiY, (q,0.,2.))
