@@ -4,57 +4,57 @@ import humpskernels as hk
 
 
 q = symbols('q')
-dim = 1
+dim = 3
 ################################################################
-# sinc4 = (sin(pi/2*q)**4)/(pi/2*q)**4
-# s4list, ok = ob.differentiatekernel(sinc4, 1)
-# wnorms = ob.calculatenorms(s4list[0])
+sinc4 = (sin(pi/2*q)**4)/(pi/2*q)**4
+s4list, ok = ob.differentiatekernel(sinc4, 1)
+wnorms = ob.calculatenorms(s4list[0])
 # print(ob.printkernel(s4list, 2.0, wnorms, 'sinc4'))
-# s4list[2] = wnorms[dim-1]*s4list[2]
-# s4list[1] = wnorms[dim-1]*s4list[1]
-# s4list[0] = wnorms[dim-1]*s4list[0]
-# s4list.append(s4list[2] + (dim-1)*s4list[1]/q)
-# s4list.append(-2*s4list[1]/q)
-# ob.tabulatefunctions(s4list, 2.0, '.', 'sinc4.dat')
-# #
-# # # k3list, ok = hk.humpskerlnels(3., 1.)
-# q2m4list, ok = hk.humpskerlnels(2., 1.)
-# q2m4norm = ob.calculatenorms(q2m4list[0])
-# # print(ob.printkernel(q2m4list, 2.0, q2m4norm, ' q2m4 '))
-# q2m4list[2] = q2m4norm[dim-1]*q2m4list[2]
-# q2m4list[1] = q2m4norm[dim-1]*q2m4list[1]
-# q2m4list[0] = q2m4norm[dim-1]*q2m4list[0]
-# q2m4list.append(q2m4list[2] + (dim-1)*q2m4list[1]/q)
-# q2m4list.append(-2*q2m4list[1]/q)
-# ob.tabulatefunctions(q2m4list, 2.0, '.', 'q2m4.dat')
-# #
+s4list[2] = wnorms[dim-1]*s4list[2]
+s4list[1] = wnorms[dim-1]*s4list[1]
+s4list[0] = wnorms[dim-1]*s4list[0]
+s4list.append(s4list[2] + (dim-1)*s4list[1]/q)
+s4list.append(-2*s4list[1]/q)
+ob.tabulatefunctions(s4list, 2.0, '.', 'sinc4.dat')
+#
+# # k3list, ok = hk.humpskerlnels(3., 1.)
+q2m4list, ok = hk.humpskerlnels(2., 1.)
+q2m4norm = ob.calculatenorms(q2m4list[0])
+# print(ob.printkernel(q2m4list, 2.0, q2m4norm, ' q2m4 '))
+q2m4list[2] = q2m4norm[dim-1]*q2m4list[2]
+q2m4list[1] = q2m4norm[dim-1]*q2m4list[1]
+q2m4list[0] = q2m4norm[dim-1]*q2m4list[0]
+q2m4list.append(q2m4list[2] + (dim-1)*q2m4list[1]/q)
+q2m4list.append(-2*q2m4list[1]/q)
+ob.tabulatefunctions(q2m4list, 2.0, '.', 'q2m4.dat')
+#
 # #######################################################################
-# m4, ok = hk.humpskerlnels(0., 1.)
-# wlist, ok = ob.differentiatekernel(m4[2], 1)
-# clist = ob.calculatenorms(wlist[0])
+m4, ok = hk.humpskerlnels(0., 1.)
+wlist, ok = ob.differentiatekernel(m4[2], 1)
+clist = ob.calculatenorms(wlist[0])
 # print(clist)
 # print(ob.printkernel(wlist, 2.0, clist, 'M4'))
-# wlist[2] = clist[dim-1]*wlist[2]
-# wlist[1] = clist[dim-1]*wlist[1]
-# wlist[0] = clist[dim-1]*wlist[0]
-# wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
-# wlist.append(-2*wlist[1]/q)
-# ob.tabulatefunctions(wlist, 2.0, '.', 'm4.dat')
+wlist[2] = clist[dim-1]*wlist[2]
+wlist[1] = clist[dim-1]*wlist[1]
+wlist[0] = clist[dim-1]*wlist[0]
+wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
+wlist.append(-2*wlist[1]/q)
+ob.tabulatefunctions(wlist, 2.0, '.', 'm4.dat')
 # #######################################################################
-# m6 = Piecewise(\
-#     ((3. - q)**5 - 6. * (2. - q)**5 + 15. * (1. - q)**5, q < 1.),\
-#     ((3. - q)**5 - 6. * (2. - q)**5, q < 2.), \
-#     ((3. - q)**5, q < 3.),\
-#     (0, True))
-# wlist, ok = ob.differentiatekernel(m6, 1)
-# clist = ob.calculatenorms(wlist[0])
-# # print(ob.printkernel(wlist, 2.0, clist, ' M6 '))
-# wlist[2] = clist[dim-1]*wlist[2]
-# wlist[1] = clist[dim-1]*wlist[1]
-# wlist[0] = clist[dim-1]*wlist[0]
-# wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
-# wlist.append(-2*wlist[1]/q)
-# ob.tabulatefunctions(wlist, 3.0, '.', 'm6.dat')
+m6 = Piecewise(\
+    ((3. - q)**5 - 6. * (2. - q)**5 + 15. * (1. - q)**5, q < 1.),\
+    ((3. - q)**5 - 6. * (2. - q)**5, q < 2.), \
+    ((3. - q)**5, q < 3.),\
+    (0, True))
+wlist, ok = ob.differentiatekernel(m6, 1)
+clist = ob.calculatenorms(wlist[0])
+# print(ob.printkernel(wlist, 2.0, clist, ' M6 '))
+wlist[2] = clist[dim-1]*wlist[2]
+wlist[1] = clist[dim-1]*wlist[1]
+wlist[0] = clist[dim-1]*wlist[0]
+wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
+wlist.append(-2*wlist[1]/q)
+ob.tabulatefunctions(wlist, 3.0, '.', 'm6.dat')
 # ########################################################################
 zipm6 = Piecewise(\
         ((3. - q)**5 - 6. * (2. - q)**5 + 15. * (1. - q)**5, q < 1.),\
@@ -63,24 +63,39 @@ zipm6 = Piecewise(\
         (0, True)).subs(q, 1.5*q)
 wlist, ok = ob.differentiatekernel(zipm6, 1)
 clist = ob.calculatenorms(wlist[0])
-# print(ob.printkernel(wlist, 2.0, clist, 'zipM6'))
+# print(ob.printkernel(wlist, 2.0, clist, 'M6/2'))
 wlist[2] = clist[dim-1]*wlist[2]
 wlist[1] = clist[dim-1]*wlist[1]
 wlist[0] = clist[dim-1]*wlist[0]
 wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
 wlist.append(-2*wlist[1]/q)
-ob.tabulatefunctions(wlist, 2.0, '.', 'zipm6.dat')
+ob.tabulatefunctions(wlist, 2.0, '.', 'm62.dat')
+# ########################################################################
+zipm6 = Piecewise(\
+        ((3. - q)**5 - 6. * (2. - q)**5 + 15. * (1. - q)**5, q < 1.),\
+        ((3. - q)**5 - 6. * (2. - q)**5, q < 2.), \
+        ((3. - q)**5, q < 3.),\
+        (0, True)).subs(q, 3*q)
+wlist, ok = ob.differentiatekernel(zipm6, 1)
+clist = ob.calculatenorms(wlist[0])
+print(ob.printkernel(wlist, 1.0, clist, 'M6/1'))
+wlist[2] = clist[dim-1]*wlist[2]
+wlist[1] = clist[dim-1]*wlist[1]
+wlist[0] = clist[dim-1]*wlist[0]
+wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
+wlist.append(-2*wlist[1]/q)
+ob.tabulatefunctions(wlist, 1.0, '.', 'm61.dat')
 # #######################################################################
-# gauss = exp(-q**2)
-# wlist, ok = ob.differentiatekernel(gauss, 1)
-# clist = ob.calculatenorms(wlist[0])
+gauss = exp(-q**2)
+wlist, ok = ob.differentiatekernel(gauss, 1)
+clist = ob.calculatenorms(wlist[0])
 # print(ob.printkernel(wlist, 2.0, clist, 'Gauss'))
-# wlist[2] = clist[dim-1]*wlist[2]
-# wlist[1] = clist[dim-1]*wlist[1]
-# wlist[0] = clist[dim-1]*wlist[0]
-# wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
-# wlist.append(-2*wlist[1]/q)
-# ob.tabulatefunctions(wlist, 3.0, '.', 'gauss.dat')
+wlist[2] = clist[dim-1]*wlist[2]
+wlist[1] = clist[dim-1]*wlist[1]
+wlist[0] = clist[dim-1]*wlist[0]
+wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
+wlist.append(-2*wlist[1]/q)
+ob.tabulatefunctions(wlist, 3.0, '.', 'gauss.dat')
 # ########################################################################
 # zipm6optlap1d = Piecewise(\
 #     ((3. - q)**5 -5.94431946621*(1.49377588576 - q)**5 + 14.9996141288*(1.02685715138 - q)**5, q < 1.02685715138),\
@@ -93,7 +108,21 @@ ob.tabulatefunctions(wlist, 2.0, '.', 'zipm6.dat')
 # clist = ob.calculatenorms(wlist[0])
 # print(ob.printkernel(wlist, 2.0, clist, name))
 # ob.tabulatekernel(wlist, 2.0, '.', 'mmq0zipm6.dat')
-
+# ##############################################################################
+llm4 = Piecewise(\
+        (1./6., q < 1.),\
+        (-1./6.*(-2. + q)**3*q*q, q < 2.),\
+        (0, True))
+wlist, ok = ob.integratekernel(llm4, 1)
+clist = ob.calculatenorms(wlist[0])
+# print(ob.printkernel(wlist, 2.0, clist, '11M4'))
+wlist[2] = clist[dim-1]*wlist[2]
+wlist[1] = clist[dim-1]*wlist[1]
+wlist[0] = clist[dim-1]*wlist[0]
+wlist.append(wlist[2] + (dim-1)*wlist[1]/q)
+wlist.append(-2*wlist[1]/q)
+ob.tabulatefunctions(wlist, 2.0, '.', '11m4.dat')
+# ##############################################################################
 # mmc0fzipm6 = Piecewise(\
 #         (74. - 69.*q - 4.5*q**2, q < 2./3.),\
 #         (-6.*(2. - 1.5*q)**5 + (3. - 1.5*q)**5, q < 4./3.), \
@@ -195,14 +224,6 @@ ob.tabulatefunctions(wlist, 2.0, '.', 'zipm6.dat')
 #
 # hkl, ok = hk.humpskerlnels(2., 1.)
 # hkn = ob.calculatenorms(hkl[0])
-# m4 = Piecewise(\
-#         (1./6., q < 1.),\
-#         (-1./6.*(-2. + q)**3*q*q, q < 2.),\
-#         (0, True))
-# m4list, ok = ob.integratekernel(m4, 1)
-# m4norm = ob.calculatenorms(m4list[0])
-# print(ob.printkernel(m4list, 2.0, hkn, ' 11M4 '))
-# ob.tabulatekernel(m4list, 2.0, '.')
 #
 # m4 = Piecewise(\
 #         (q/6., q < 1.),\
