@@ -50,7 +50,7 @@ Basefunction = Piecewise(\
                 (0, True)).subs(q, 1.5*q)
 
 # A0 = random.uniform(0., 1.)
-X0 = [1., 2., -6., 15.]
+X0 = [2./3., 3./2., -6., 15.]
 # X0 = [A0, 2*A0, random.uniform(-10., 10.),random.uniform(-10., 10.)]
 MathEngine = 1
 TTypeStr = 'Differentiation'

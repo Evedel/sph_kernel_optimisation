@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from sympy import *
 import os
 from sympy.integrals.quadrature import gauss_legendre
@@ -6,7 +8,6 @@ from sympy.parsing.sympy_parser import parse_expr as symparse
 import subprocess as sp
 import numpy as np
 import time as t
-
 
 Pwdpath  = os.getcwd()
 q, A, B, C, D, E, F, G = symbols('q A B C D E F G')
@@ -43,7 +44,7 @@ def waitwithtimeout(process, timeout):
     if (process.poll() == None):
         process.kill()
 
-def solveproblem(klist, gen, popnum, gennum, makepath, taskcase, runnerpath, dimcase, estimatecolumn, aimvalue, diffcase='n2w'):
+def solveproblem(krad, klist, gen, popnum, gennum, makepath, taskcase, runnerpath, dimcase, estimatecolumn, aimvalue, diffcase='n2w'):
     w, dw, d2w = klist
     if (isinstance(d2w.args[0], float)):
         print(klist)
@@ -53,17 +54,14 @@ def solveproblem(klist, gen, popnum, gennum, makepath, taskcase, runnerpath, dim
         os.mkdir(Pwdpath + "/appsrc")
     os.system("cp -r " + makepath + "/* " + Pwdpath + "/appsrc")
     norm = calculatenorms(w)
-    n2kernf90 = printkernel(klist, 2, norm, 'genesis')
+    n2kernf90 = printkernel(klist, krad, norm, 'genesis')
 
     f = open(Pwdpath + "/appsrc/src/kernel/" + "n2ext.f90", 'w')
     f.write(n2kernf90)
     f.close()
 
-    if (popnum == 0):
-        make = sp.Popen(["make", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
-    else:
-        make = sp.Popen(["make", "-j", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
-    waitwithtimeout(make, 30)
+    make = sp.Popen(["make", "debug=no"], stdout=sp.PIPE, stderr=sp.PIPE, cwd=Pwdpath+"/appsrc")
+    waitwithtimeout(make, 60)
 
     if make.poll() != 0:
         # print("Make failed: " + str(make.poll()))
@@ -92,7 +90,7 @@ def solveproblem(klist, gen, popnum, gennum, makepath, taskcase, runnerpath, dim
     f.write(n2kernf90)
     f.close()
     # Save kernel profile
-    qt = np.linspace(0., 2., 100)
+    qt = np.linspace(0., krad, 100)
     kernprofilefilename = "kernprofile.dat"
     if len(dimcase) == 1:
         kernprofilefilename = "kernprofile-" + str(dimcase[0]) + "D.dat"
@@ -123,15 +121,19 @@ def evaluateresult(path, yidx, aimy):
         with open(path, 'r') as f:
             file_string = f.readline()
             y = []
+            numberOfElems = 0
             while file_string:
                 file_string = f.readline()
                 elements = file_string.split()
                 if len(elements) != 0:
                     y.append(float(elements[yidx]))
+                    numberOfElems += 1
             f.close()
             if (len(y) != 0):
                 # quality = sqrt(sum((yi-aimy)**2 for yi in y))/len(y)
                 quality = sum(abs(yi-aimy) for yi in y)
+                if (numberOfElems < 100):
+                    quality = BrokenPenalty
     return quality
 
 def fixmathpy(s):
@@ -181,24 +183,24 @@ def printkernel(klist,R,c,name):
     kernfile += "module n2ext\n"
     kernfile += "  use const\n"
     kernfile += "  implicit none\n\n"
-    kernfile += "  public :: kf, kdf, kddf, wCv, krad, kernelname, setdimbase\n\n"
+    kernfile += "  public :: n2f, n2df, n2ddf, n2Cv, n2R, n2Name, setdimbase\n\n"
     kernfile += "  private\n\n"
     normstr = str(c[0]) + ", " + str(c[1]) + ", " + str(c[2])
     kernfile += "    real :: n2C(3) = (/ " + normstr + " /)\n"
-    kernfile += "    character (len=10) :: kernelname = ' " + name + " '\n"
-    kernfile += "    real :: krad = " + "{0:.1f}".format(R) + ", wCv\n"
+    kernfile += "    character (len=10) :: n2Name = ' " + name + " '\n"
+    kernfile += "    real :: n2R = " + "{0:.1f}".format(R) + ", n2Cv\n"
     kernfile += "    integer :: dim\n"
     kernfile += "  contains\n\n"
     kernfile += "  subroutine setdimbase(d)\n"
     kernfile += "    integer, intent(in) :: d\n"
     kernfile += "    dim = d\n"
-    kernfile += "    wCv = n2C(dim)\n"
+    kernfile += "    n2Cv = n2C(dim)\n"
     kernfile += "  end subroutine\n\n"
-    kernfile += "  pure subroutine kf(q, f)\n"
-    kernfile += "    real, intent(in)  :: q\n"
+    kernfile += "  pure subroutine n2f(r, h, f)\n"
+    kernfile += "    real, intent(in)  :: r, h\n"
     kernfile += "    real, intent(out) :: f\n\n"
-    # print(type(i2w))
-    # exit(0)
+    kernfile += "    real              :: q\n"
+    kernfile += "    q = r / h\n"
     if isinstance(w, Piecewise):
         for i, (e, c) in enumerate(w.args):
             if i == 0:
@@ -216,9 +218,11 @@ def printkernel(klist,R,c,name):
             kernfile += "      f  = "+ linetruncaion(str(e)) + "\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine\n\n"
-        kernfile += "  pure subroutine kdf(q, df)\n"
-        kernfile += "    real, intent(in)  :: q\n"
+        kernfile += "  pure subroutine n2df(r, h, df)\n"
+        kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: df\n\n"
+        kernfile += "    real              :: q\n"
+        kernfile += "    q = r / h\n"
         for i, (e, c) in enumerate(dw.args):
             if i == 0:
                 kernfile += "    if (q < 0.0) then\n"
@@ -234,10 +238,15 @@ def printkernel(klist,R,c,name):
                 kernfile += "    elseif (" + fixmathpy(fcode(c).lstrip()) + ") then\n"
             kernfile += "      df  = " + linetruncaion(str(e)) + "\n"
         kernfile += "    end if\n"
+        kernfile += "    if (q /= 0) then\n"
+        kernfile += "      df = df / q\n"
+        kernfile += "    end if\n"
         kernfile += "  end subroutine\n\n"
-        kernfile += "  pure subroutine kddf(q, ddf)\n"
-        kernfile += "    real, intent(in)  :: q\n"
+        kernfile += "  pure subroutine n2ddf(r, h, ddf)\n"
+        kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: ddf\n\n"
+        kernfile += "    real              :: q\n"
+        kernfile += "    q = r / h\n"
         try:
             for i, (e, c) in enumerate(d2w.args):
                 if i == 0:
@@ -271,9 +280,11 @@ def printkernel(klist,R,c,name):
         kernfile += "      f = .0\n"
         kernfile += "    end if\n"
         kernfile += "  end subroutine\n\n"
-        kernfile += "  pure subroutine kdf(q, df)\n"
-        kernfile += "    real, intent(in)  :: q\n"
+        kernfile += "  pure subroutine n2df(r, h, df)\n"
+        kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: df\n\n"
+        kernfile += "    real              :: q\n"
+        kernfile += "    q = r / h\n"
         kernfile += "    if (q < 0.0) then\n"
         kernfile += "      if (isnan(q)) then\n"
         kernfile += "        error stop 'q is nan'\n"
@@ -285,10 +296,15 @@ def printkernel(klist,R,c,name):
         kernfile += "    else\n"
         kernfile += "      df = .0\n"
         kernfile += "    end if\n"
+        kernfile += "    if (q /= 0) then\n"
+        kernfile += "      df = df / q\n"
+        kernfile += "    end if\n"
         kernfile += "  end subroutine\n\n"
-        kernfile += "  pure subroutine kddf(q, ddf)\n"
-        kernfile += "    real, intent(in)  :: q\n"
+        kernfile += "  pure subroutine n2ddf(r, h, ddf)\n"
+        kernfile += "    real, intent(in)  :: r, h\n"
         kernfile += "    real, intent(out) :: ddf\n\n"
+        kernfile += "    real              :: q\n"
+        kernfile += "    q = r / h\n"
         kernfile += "    if (q < 0.0) then\n"
         kernfile += "      if (isnan(q)) then\n"
         kernfile += "        error stop 'q is nan'\n"

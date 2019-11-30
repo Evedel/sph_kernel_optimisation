@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from sympy import *
 from sympy.core.cache import *
 import os
@@ -5,37 +7,76 @@ import random as rd
 import matplotlib.pyplot as plt
 from datetime import datetime as dt
 import gc
+import optbase as ob
 
-q, A, B, C, D, E, F, G = symbols('q A B C D E F G')
-Makepath = "/Users/sergeibiriukov/_git/moca_study/fortran/ND-assign"
-Runnerpath = "/Users/sergeibiriukov/_git/moca_study/fortran/scripts/run-diff-err-h.sh"
+q = symbols('q')
+A = symbols('A0:10')
+
+# Makepath = "/Users/sergeibiriukov/_git/moca_study/fortran/ND-assign"
+Makepath = "/Users/sergeibiriukov/_git/moca_study/python/kernoptim/f90_src"
+# Runnerpath = "/Users/sergeibiriukov/_git/moca_study/fortran/scripts/run-diff-err-h.sh"
+Runnerpath = Makepath + "/run-diff-err-h.sh"
 Local_env = os.environ.copy()
 Local_env["OMP_NUM_THREADS"] = "1"
 Popsize = 20
-Initgen1D = [1., 1., 1., 1., 1., 1./sqrt(pi)]
-# Initgen2D = [1., 1., 1., 1., 1., 1./pi]
-Initgen2D = [6.64475184836906, 1.26725568832901, -0.131900694871420, 1.85394903650122, -0.0746141118420310, -0.0937635009463731 + 1.0/pi]
-Initgen3D = [1., 1., 1., 1., 1., 1./(pi)**(3./2.)]
-Basefunction = A*exp(-B*(q + C)**2) + D * (1. - q/2.) + E
+# Initgen1D = [1., 1., 1., 1., 1., 1./sqrt(pi)]
+# Initgen2D = [6.64475184836906, 1.26725568832901, -0.131900694871420, 1.85394903650122, -0.0746141118420310, -0.0937635009463731 + 1.0/pi]
+# Initgen3D = [1., 1., 1., 1., 1., 1./(pi)**(3./2.)]
+
+# Basefunction = A[0]*exp(-A[1]*(q + A[2])**2) + A[3] * (1. - q/2.) + A[4]
+# Initgen2D = [1., 1., 1., 1., 1.]
+# krad = 2
+# ftype = 0
+
+# Basefunction = Piecewise(\
+#                 (A[0]*(3. - q)**5 + A[1] * (2. - q)**5 + A[2] * (1. - q)**5, q < 1.),\
+#                 (A[0]*(3. - q)**5 + A[1] * (2. - q)**5, q < 2.),\
+#                 (A[0]*(3. - q)**5, q < 3.),\
+#                 (0, True))
+# krad = 3
+# Initgen2D = [1., -6., 15.]
+# ftype = 1
+
+# Basefunction = Piecewise(\
+#         (A[0]*(2. - q)**3 + A[1]*(1. - q)**3, q < 1.), \
+#         (A[0]*(2. - q)**3, q < 2.),\
+#         (0, True))
+# krad = 2
+# Initgen2D = [0.25, -1.]
+# ftype = 1
+
+Basefunction = Piecewise(\
+                (A[0]*(3. - q)**5 + A[1] * (2. - q)**5 + A[2] * (1. - q)**5, q < 1.),\
+                (A[0]*(3. - q)**5 + A[1] * (2. - q)**5, q < 2.),\
+                (A[0]*(3. - q)**5, q < 3.),\
+                (0, True)).subs(q, 1.5*q)
+krad = 2
+Initgen2D = [1., -6., 15.]
+ftype = 1
+
 DimCase = 2
 LuckySpicies = int(Popsize/4)
-MutationRate = 25
+MutationRate = 100
 MutationPower = 1       # Random(0,1) * MutPow
 MutationWidth = 1       # Number of gens to mutate at ones
-MathEngine = 0
+MathEngine = 0 if (ftype==0) else 1
 MathEnStr = "Mathematica" if MathEngine==0 else "SymPy"
 eps = 10e-12
 TaskType = "diff-laplace"
+# TaskType = "diff-graddiv"
 EstimateColumn = 2
 AimValue = 0.
+
+def pf(s):
+    print(s, flush=True)
 
 def fmt(e):
     import re
     s = "%s" %e
-    s = re.sub(refmtsub,"\g<0>.", s)
+    s = re.sub(ob.refmtsub,"\g<0>.", s)
     f = sympify(s)
     g = "%s" %simplify(f)
-    if re.search(refmtser,g):
+    if re.search(ob.refmtser,g):
        return s
     else:
        return g
@@ -46,7 +87,7 @@ def initfromseed(initlist, poplen):
     for i in range(1,poplen):
         newpop = []
         for j in range(0,len(initlist)):
-            newpop.append(initlist[j] + rd.uniform(-1, 5))
+            newpop.append(initlist[j] * rd.uniform(-2, 2))
         pop.append(newpop)
     return pop
 
@@ -57,7 +98,6 @@ def indexfromchances(pbbties):
     for i in range(1,len(pbbties)):
         if ((rndval > pbbties[i-1]) and (rndval <= pbbties[i])):
             return i
-    # Don't return None
     return 0
 
 def isgeninlist(genlist, newgen):
@@ -104,20 +144,20 @@ def crossover(genoms, chances, luckynum):
             Y = indexfromchances(pbbties)
             k += 1
         if (k > trialsnum):
-            print("Failed to find different parents")
+            pf("Failed to find different parents")
         cross = rd.randint(1,len(genoms[0])-1)
         newgenoms.append(genoms[X][:cross] + genoms[Y][cross:])
         crossresults += "%d|%d|%d  " %(X, cross, Y)
-    print("  Breeding Result: [%s]" %crossresults)
+    pf("  Breeding Result: [%s]" %crossresults)
     return newgenoms
 
 def mutation(genoms, luckynum, oafit, mnfit):
     currentMR = MutationRate
     currentMP = MutationPower * mnfit
     if (abs(oafit - mnfit) < 10e-12):
-        print(" ----------------------------------------- ")
-        print("<*>>>> The catastrophe has happened! <<<<*>")
-        print(" ----------------------------------------- ")
+        pf(" ----------------------------------------- ")
+        pf("<*>>>> The catastrophe has happened! <<<<*>")
+        pf(" ----------------------------------------- ")
         currentMR = 100
         # To make it proportional to current error.
         #  Bigger error  => bigger power.
@@ -128,29 +168,32 @@ def mutation(genoms, luckynum, oafit, mnfit):
         if (rd.randint(0,100) < currentMR):
             for j in range(0,MutationWidth):
                 genidx = rd.randint(0,len(genoms[0])-1)
-                genoms[i][genidx] += rd.uniform(-1,1) * currentMP
+                genoms[i][genidx] += rd.uniform(-1,1) * currentMP * abs(genoms[i][genidx])
     return genoms
 
 def main():
-    # gen = [1, 4.0, -0.8, -0.0773047, -0.00157556, 3./(sqrt(pi)) - 0.075, 30./(7.*pi) + 0.01, 50./(7.*pi**(3./2)) - 0.02]
+    popnum = 0
     if DimCase == 1:
         Initgen = Initgen1D
     elif DimCase == 2:
         Initgen = Initgen2D
     elif DimCase == 3:
         Initgen = Initgen3D
-    print("||====================----------------=================")
-    print("|| Integration Engine: %s" %MathEnStr)
-    print("|| OMP threads (Fort): %s" %Local_env["OMP_NUM_THREADS"])
-    print("||      Base Function: %s" %Basefunction)
-    print("||        Initial Gen: %s" %Initgen)
-    print("||    Population Size: %s" %Popsize)
-    print("||      Lucky Spicies: %s" %LuckySpicies)
-    print("||      Mutation Rate: %s%%" %MutationRate)
-    print("||     Mutation Power: %s" %MutationPower)
-    print("||     Mutation Width: %s" %MutationWidth)
-    print("||====================----------------=================")
-    popnum = 0
+    pf("||====================----------------=================")
+    pf("|| Integration Engine: %s" %MathEnStr)
+    pf("|| OMP threads (Fort): %s" %Local_env["OMP_NUM_THREADS"])
+    pf("||      Base Function: %s" %Basefunction)
+    pf("||        Initial Gen: %s" %Initgen)
+    pf("||    Population Size: %s" %Popsize)
+    pf("||      Lucky Spicies: %s" %LuckySpicies)
+    pf("||      Mutation Rate: %s%%" %MutationRate)
+    pf("||     Mutation Power: %s" %MutationPower)
+    pf("||     Mutation Width: %s" %MutationWidth)
+    pf("||====================----------------=================")
+
+    # Initgen = [-49.90003995314704, 2.267079626421994, 9.108311456646012, 1.0, 1.0]
+    # popnum = 30
+
     population = initfromseed(Initgen,Popsize)
     overall = 1000
     cost = [overall]
@@ -160,22 +203,42 @@ def main():
         cost = []
         gennum = 0
         for genom in population:
-            cA, cB, cC, cD, cE, ckd = genom
-            w = Basefunction.subs([(A,cA), (B,cB), (C, cC), (D, cD), (E, cE)])
+
+            w = Basefunction
+            for xi in range(len(genom)):
+                w = w.subs(A[xi],genom[xi])
+            if (ftype==1):
+                w = simplify(w - w.subs(q,krad))
             tic = dt.now()
-            klist, ok = integratekernel(w, MathEngine)
+            if (ftype==0):
+                klist, ok = ob.integratekernel(w, MathEngine)
+            if (ftype==1):
+                klist, ok = ob.differentiatekernel(w, MathEngine)
             tac = dt.now()
             if ok:
-                cost.append(solveproblem(klist, ckd, genom, popnum, gennum, Makepath, [DimCase], [TaskType], EstimateColumn. AimValue))
+                cost.append(
+                    ob.solveproblem(
+                        krad,
+                        klist,
+                        genom,
+                        popnum,
+                        gennum,
+                        Makepath,
+                        [TaskType],
+                        Runnerpath,
+                        [DimCase],
+                        EstimateColumn,
+                        AimValue))
             else:
-                print("<*><*><*>\nIntegratin failed\nFunction: %s\nEngine: %s\n<*><*><*>\n" %(w,MathEnStr))
-                cost.append(BrokenPenalty)
+                if (ftype==0):
+                    pf("<*><*><*>\nIntegratin failed\nFunction: %s\nEngine: %s\n<*><*><*>\n" %(w,MathEnStr))
+                if (ftype==1):
+                    pf("<*><*><*>\nDifferentiation failed\nFunction: %s\nEngine: %s\n<*><*><*>\n" %(w,MathEnStr))
+                cost.append(ob.BrokenPenalty)
             toe = dt.now()
-            print("pp-%04d/gn-%04d | Time: %s(int); %s(fit) | Error: %.8f" \
+            pf("pp-%04d/gn-%04d | Time: %s(int); %s(fit) | Error: %.8f" \
                     %(popnum, gennum, tac-tic, toe-tac, cost[-1]))
             gennum += 1
-        # cost = [2.85852950692223, 3.27739835997030, 3.16406915975418, 2.77897308020322, 2.93216028306821]
-        # cost = [2, 2, 2, 2, 2, 2, 2, 2, 2]
         tic = dt.now()
         for i in range(0,len(cost)):
             overall += cost[i]
@@ -184,13 +247,16 @@ def main():
         chancesstr = ""
         for i in chances:
             chancesstr += "%.2f  " %i
-        print("Breedings Chances: %s" %(chancesstr))
-        # print("  Avarage Fitness: %s" %(overall/len(cost)))
-        # print("     Best Fitness: %s" %(min(cost)))
+        pf("Breedings Chances: %s" %(chancesstr))
+        # pf("  Avarage Fitness: %s" %(overall/len(cost)))
+        # pf("     Best Fitness: %s" %(min(cost)))
         population = crossover(population, chances, LuckySpicies)
         population = mutation(population, LuckySpicies, overall/len(cost), min(cost))
         popnum += 1
         tac = dt.now()
-        print("--------------------------------[> Breeding Time %s, Best Fittness: %s" %(tac-tic, min(cost)))
+        pf("--------------------------------[> Breeding Time %s, Best Fittness: %s" %(tac-tic, min(cost)))
         gc.collect()
-# main()
+
+pf("Started")
+main()
+pf("Finished")
